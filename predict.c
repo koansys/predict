@@ -41,8 +41,9 @@
 /* Bump up satellites from 24 to something more;
  * Have to give Curses display an offset to accommodate.
  * MAX_SATS has to be even (for now)
+ * We pick 94 because that's the max printable chars for our Single picker. :-(
  */
-#define MAX_SATS 100
+#define MAX_SATS 94
 #define OFFSET ((MAX_SATS - 24) / 2)
 
 /* Constants used by SGP4/SDP4 code */
@@ -3211,21 +3212,33 @@ int Select()
 	   corresponds to the satellite selected by the user.  An
 	   ESC or CR returns a -1. */
 
-	int x, y, z, key=0;
+	int x, y, key=0;
+        char firstchar = ' ';   /* ' ' to '~' gives 94 choices */
+        int last_sat = MAX_SATS;
+        int second_half;
 
 	clear();
 
 	bkgdset(COLOR_PAIR(2)|A_BOLD);
-	printw("\n\n\t\t\t      Select a Satellite:\n\n");
+	printw("\n\n\tSelect a Satellite by single character (upper, lower, symbol):\n\n");
 
 	attrset(COLOR_PAIR(3)|A_BOLD);
 
-	for (x=0, y=8, z=16; y<16; ++x, ++y, ++z)
-	{
-		printw("\n\t[%c]: %-15s", x+'A', Abbreviate(sat[x].name,15));
-		printw("\t[%c]: %-15s", y+'A', Abbreviate(sat[y].name,15));
-		printw("\t[%c]: %-15s\n", z+'A', Abbreviate(sat[z].name,15));
-	}
+        for (x=0; x < MAX_SATS; x++) {
+          if (! strlen(sat[x].name)) {
+            last_sat=x;
+            break;
+          }
+        }
+
+        second_half = (last_sat + 1)/2; /* rounding */
+        for (x=0; x < second_half; x++) {
+          printw("\n\t[%c]: %-25s", x+firstchar, Abbreviate(sat[x].name,25));
+          y = x + second_half;
+          if (strlen(sat[y].name)) {
+            printw("\t[%c]: %-25s", y+firstchar, Abbreviate(sat[y].name,25));
+          }
+        }
 
 	attrset(COLOR_PAIR(4)|A_BOLD);
 
@@ -3234,14 +3247,14 @@ int Select()
 
 	do
 	{
-		key=toupper(getch());
+		key=getch();
 
 		if (key==27 || key=='\n')
 			return -1;
 
-	} while (key<'A' || key>'X');
+                } while (key<firstchar || key>(firstchar + MAX_SATS));
 
-	return(key-'A');
+	return(key-firstchar);
 }
 
 long DayNum(m,d,y)
